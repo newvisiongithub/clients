@@ -1,0 +1,313 @@
+<!-- مؤشر حالة الاتصال بالسحابة -->
+<div id="db-status-box" class="mb-6 p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs flex items-center justify-between">
+  <span class="flex items-center gap-2">
+    <span id="db-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+    <span id="db-status-text" class="text-slate-300 font-semibold">جاري الاتصال...</span>
+  </span>
+  <button onclick="refreshData()" class="text-blue-400 hover:text-blue-300 transition text-[11px] font-bold">تحديث</button>
+</div>
+
+<nav class="space-y-1.5 flex-1">
+  <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition text-slate-300 hover:bg-slate-800">
+    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+    <span>الرئيسية والتحليلات</span>
+  </button>
+  <button onclick="switchTab('clients')" id="nav-clients" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition text-slate-300 hover:bg-slate-800">
+    <i data-lucide="users" class="w-5 h-5"></i>
+    <span>العملاء (Clients)</span>
+  </button>
+  <button onclick="switchTab('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition text-slate-300 hover:bg-slate-800">
+    <i data-lucide="server" class="w-5 h-5"></i>
+    <span>المنتجات والخدمات</span>
+  </button>
+  <button onclick="switchTab('payments')" id="nav-payments" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition text-slate-300 hover:bg-slate-800">
+    <i data-lucide="wallet" class="w-5 h-5"></i>
+    <span>المدفوعات (KWD)</span>
+  </button>
+  <button onclick="switchTab('renewals')" id="nav-renewals" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition text-slate-300 hover:bg-slate-800 relative">
+    <i data-lucide="bell" class="w-5 h-5 text-amber-400"></i>
+    <span>التنبيهات والتجديدات</span>
+    <span id="badge-expiring" class="mr-auto bg-amber-500 text-slate-950 font-black text-xs px-2 py-0.5 rounded-full hidden">0</span>
+  </button>
+</nav>
+
+
+<!-- شريط البحث الشامل السريع (بالاسم أو الهاتف أو الإيميل) -->
+<div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-3">
+  <div class="relative flex-1 w-full">
+    <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute right-3.5 top-3.5"></i>
+    <input 
+      type="text" 
+      id="global-search-input" 
+      oninput="handleGlobalSearch(this.value)" 
+      placeholder="ابحث فوراً بالاسم، برقم الهاتف، أو البريد الإلكتروني..." 
+      class="w-full pr-11 pl-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm transition"
+    />
+  </div>
+  <div id="search-results-summary" class="text-xs font-bold text-slate-500 shrink-0"></div>
+</div>
+
+<!-- 1. شاشة لوحة التحكم والتحليلات (Dashboard) -->
+<section id="view-dashboard" class="space-y-6">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div>
+      <h2 class="text-2xl font-black text-slate-900">لوحة الإحصائيات والإيرادات</h2>
+      <p class="text-xs text-slate-500">حسابات دقيقة مطابقة لجداولك بالدينار الكويتي (KWD)</p>
+    </div>
+    <button onclick="triggerEmailDigest()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-2 shadow-sm transition">
+      <i data-lucide="send" class="w-4 h-4"></i>
+      <span>إرسال تقرير التنبيهات لبريدي</span>
+    </button>
+  </div>
+
+  <!-- بطاقات الإحصائيات (Reports & Analytics) -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+    <!-- إجمالي الإيرادات -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-500">إجمالي المدفوعات</span>
+      <div class="text-xl md:text-2xl font-black text-emerald-600 mt-2" id="stat-total-paid">0.000</div>
+      <span class="text-[10px] text-slate-400 font-bold">KWD تم تحصيلها</span>
+    </div>
+
+    <!-- المدفوعات المعلقة -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-500">المدفوعات المعلقة</span>
+      <div class="text-xl md:text-2xl font-black text-rose-600 mt-2" id="stat-pending-payments">0.000</div>
+      <span class="text-[10px] text-slate-400 font-bold">KWD متبقية</span>
+    </div>
+
+    <!-- المنتجات النشطة -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold text-slate-500">المنتجات النشطة</span>
+      <div class="text-xl md:text-2xl font-black text-blue-600 mt-2" id="stat-active-products">0</div>
+      <span class="text-[10px] text-slate-400 font-bold">اشتراك وخدمة</span>
+    </div>
+
+    <!-- ستنتهي قريباً (30 يوم) -->
+    <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm">
+      <span class="text-xs font-bold text-amber-800">ستنتهي قريباً</span>
+      <div class="text-xl md:text-2xl font-black text-amber-800 mt-2" id="stat-expiring-soon">0</div>
+      <span class="text-[10px] text-amber-700 font-bold">خلال 30 يوماً</span>
+    </div>
+
+    <!-- إجمالي العملاء -->
+    <div class="bg-purple-50 p-4 rounded-2xl border border-purple-200 shadow-sm col-span-2 lg:col-span-1">
+      <span class="text-xs font-bold text-purple-800">إجمالي العملاء</span>
+      <div class="text-xl md:text-2xl font-black text-purple-700 mt-2" id="stat-total-clients">0</div>
+      <span class="text-[10px] text-purple-600 font-bold">عميل مسجل</span>
+    </div>
+  </div>
+
+  <!-- جدول التنبيهات العاجلة داخل الداشبورد -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-4 bg-slate-50/70 border-b flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500"></i>
+        <h3 class="font-bold text-slate-800">خدمات تتطلب التجديد الفوري (متبقي أقل من 30 يوم)</h3>
+      </div>
+      <span class="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full" id="urgent-count-badge">0 مطلوب</span>
+    </div>
+    <div class="overflow-x-auto custom-scroll">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-50 text-slate-500 border-b text-xs">
+          <tr>
+            <th class="p-3.5">العميل</th>
+            <th class="p-3.5">الخدمة</th>
+            <th class="p-3.5">تاريخ التجديد</th>
+            <th class="p-3.5">المتبقي</th>
+            <th class="p-3.5 text-center">إجراء سريع</th>
+          </tr>
+        </thead>
+        <tbody id="dash-urgent-table" class="divide-y divide-slate-100">
+          <!-- يُملأ بالجافاسكربت -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 2. شاشة العملاء (Clients) -->
+<section id="view-clients" class="space-y-4 hidden">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-black text-slate-900">سجل العملاء (Clients)</h2>
+      <p class="text-xs text-slate-500">قائمة العملاء وبيانات الاتصال والشركات</p>
+    </div>
+    <button onclick="openClientModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-sm transition">
+      <i data-lucide="user-plus" class="w-4 h-4"></i>
+      <span>عميل جديد</span>
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto custom-scroll">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-50 text-slate-600 border-b text-xs font-bold">
+          <tr>
+            <th class="p-3.5">اسم العميل</th>
+            <th class="p-3.5">البريد الإلكتروني</th>
+            <th class="p-3.5">الهاتف</th>
+            <th class="p-3.5">الشركة</th>
+            <th class="p-3.5">الحالة</th>
+            <th class="p-3.5">ملاحظات</th>
+            <th class="p-3.5 text-center">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 3. شاشة المنتجات والخدمات (Products & Services) -->
+<section id="view-products" class="space-y-4 hidden">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-black text-slate-900">المنتجات والخدمات (Products & Services)</h2>
+      <p class="text-xs text-slate-500">دومينات، بريد إلكتروني، تراخيص، هاردوير وسوفت وير</p>
+    </div>
+    <button onclick="openProductModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-sm transition">
+      <i data-lucide="plus-circle" class="w-4 h-4"></i>
+      <span>إضافة خدمة</span>
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto custom-scroll">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-50 text-slate-600 border-b text-xs font-bold">
+          <tr>
+            <th class="p-3.5">المنتج / الخدمة</th>
+            <th class="p-3.5">النوع</th>
+            <th class="p-3.5">العميل</th>
+            <th class="p-3.5">تاريخ الشراء</th>
+            <th class="p-3.5">تاريخ التجديد</th>
+            <th class="p-3.5">الضمان</th>
+            <th class="p-3.5">الحساب / الدخول</th>
+            <th class="p-3.5">ملاحظات</th>
+            <th class="p-3.5 text-center">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 4. شاشة المدفوعات (Payments) -->
+<section id="view-payments" class="space-y-4 hidden">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-black text-slate-900">المدفوعات (Payments KWD)</h2>
+      <p class="text-xs text-slate-500">حساب المتبقي تلقائياً لكل فاتورة ودفعات العملاء</p>
+    </div>
+    <button onclick="openPaymentModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-sm transition">
+      <i data-lucide="credit-card" class="w-4 h-4"></i>
+      <span>تسجيل دفعة</span>
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto custom-scroll">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-50 text-slate-600 border-b text-xs font-bold">
+          <tr>
+            <th class="p-3.5">العميل</th>
+            <th class="p-3.5">الخدمة</th>
+            <th class="p-3.5">الإجمالي</th>
+            <th class="p-3.5">المدفوع</th>
+            <th class="p-3.5">المتبقي</th>
+            <th class="p-3.5">تاريخ الدفع</th>
+            <th class="p-3.5">الطريقة</th>
+            <th class="p-3.5">الحالة</th>
+            <th class="p-3.5 text-center">حذف</th>
+          </tr>
+        </thead>
+        <tbody id="payments-tbody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 5. شاشة التجديدات والتنبيهات (Renewals & Alerts) -->
+<section id="view-renewals" class="space-y-4 hidden">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-black text-slate-900">التجديدات والتنبيهات السنوية</h2>
+      <p class="text-xs text-slate-500">تنبيه تلقائي قبل موعد التجديد بـ 30 يوماً</p>
+    </div>
+    <button onclick="triggerEmailDigest()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-sm transition">
+      <i data-lucide="mail" class="w-4 h-4"></i>
+      <span>إرسال كشف الحساب بالبريد</span>
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto custom-scroll">
+      <table class="w-full text-right text-sm">
+        <thead class="bg-slate-50 text-slate-600 border-b text-xs font-bold">
+          <tr>
+            <th class="p-3.5">العميل</th>
+            <th class="p-3.5">المنتج / الخدمة</th>
+            <th class="p-3.5">تاريخ التجديد</th>
+            <th class="p-3.5">تاريخ بدء التنبيه (-30 يوم)</th>
+            <th class="p-3.5">الحالة الحالية</th>
+            <th class="p-3.5 text-center">الإجراء (Action)</th>
+          </tr>
+        </thead>
+        <tbody id="renewals-tbody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 6. شاشة ملف العميل وتفاصيله المجمعة (نتيجة البحث الشامل) -->
+<section id="view-client-profile" class="space-y-6 hidden">
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+    <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b pb-4 mb-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 class="text-2xl font-black text-slate-900" id="prof-name">اسم العميل</h2>
+          <span id="prof-status" class="px-2.5 py-0.5 rounded-full text-xs font-bold"></span>
+        </div>
+        <p class="text-sm text-slate-500 mt-1" id="prof-company">الشركة</p>
+      </div>
+      <div class="flex gap-2">
+        <a id="prof-call-btn" href="#" class="px-3.5 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"><i data-lucide="phone" class="w-3.5 h-3.5"></i> اتصال</a>
+        <a id="prof-mail-btn" href="#" class="px-3.5 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"><i data-lucide="mail" class="w-3.5 h-3.5"></i> مراسلة</a>
+        <button onclick="switchTab('clients')" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">رجوع</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div class="p-3 bg-slate-50 rounded-xl">
+        <span class="text-slate-400 block mb-1">البريد الإلكتروني:</span>
+        <span id="prof-email" class="font-bold text-slate-800"></span>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl">
+        <span class="text-slate-400 block mb-1">الهاتف:</span>
+        <span id="prof-phone" class="font-bold text-slate-800" dir="ltr"></span>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl">
+        <span class="text-slate-400 block mb-1">ملاحظات العميل:</span>
+        <span id="prof-notes" class="font-bold text-slate-800"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- خدمات واشتراكات هذا العميل -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+      <i data-lucide="server" class="w-4 h-4 text-blue-600"></i> خدمات واشتراكات هذا العميل
+    </h3>
+    <div id="prof-products-container" class="space-y-2"></div>
+  </div>
+
+  <!-- مدفوعات وفواتير هذا العميل -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+      <i data-lucide="wallet" class="w-4 h-4 text-emerald-600"></i> سجل مدفوعات وفواتير العميل
+    </h3>
+    <div id="prof-payments-container" class="space-y-2"></div>
+  </div>
+</section>
